@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المنصة</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter & Cairo (for Arabic) -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Cairo', 'Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981', // Emerald 500
+                            600: '#059669', // Emerald 600
+                        },
+                        surface: '#F9FAFB'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #F9FAFB;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+    </style>
+</head>
+<body class="text-gray-800 flex flex-col min-h-screen">
+
+    <!-- Navbar -->
+    <nav id="navbar" class="hidden bg-white shadow-sm sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Right: Logo -->
+                <div class="flex-shrink-0 flex items-center cursor-pointer" onclick="navigate('userHome')">
+                    <i class="fa-solid fa-layer-group text-brand-500 text-2xl ml-2"></i>
+                    <span class="font-bold text-xl text-gray-900" id="nav-site-name">المنصة</span>
+                </div>
+                <!-- Center: Links -->
+                <div class="hidden md:flex space-x-8 space-x-reverse">
+                    <a href="#" onclick="navigate('userHome')" class="text-gray-600 hover:text-brand-500 px-3 py-2 rounded-md text-sm font-medium transition-colors">الرئيسية</a>
+                    <a href="#" onclick="navigate('adminHome')" class="text-gray-600 hover:text-brand-500 px-3 py-2 rounded-md text-sm font-medium transition-colors">لوحة التحكم</a>
+                </div>
+                <!-- Left: User Info & Logout -->
+                <div class="flex items-center gap-4">
+                    <div class="hidden sm:flex flex-col text-left text-xs text-gray-500 mr-4">
+                        <span id="nav-user-email" class="font-semibold text-gray-700"></span>
+                        <span>مستخدم نشط</span>
+                    </div>
+                    <button onclick="logout()" class="text-gray-400 hover:text-red-500 transition-colors" title="تسجيل الخروج">
+                        <i class="fa-solid fa-right-from-bracket text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="app-content" class="flex-grow flex flex-col w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Dynamic content injected here -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-auto py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
+            &copy; 2026 <span id="footer-site-name">المنصة</span> - جميع الحقوق محفوظة
+        </div>
+    </footer>
+
+    <!-- Global Modal Container -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex justify-center items-center p-4 backdrop-blur-sm transition-opacity">
+        <div id="modal-content" class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-300">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 id="modal-title" class="text-lg font-bold text-gray-900">عنوان</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div id="modal-body" class="px-6 py-4 max-h-[70vh] overflow-y-auto">
+                <!-- Content -->
+            </div>
+            <!-- Modal Footer -->
+            <div id="modal-footer" class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+                <!-- Buttons -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- Application Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signInWithCustomToken, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'minassa-app';
+        let firebaseConfig = {};
+        if (typeof __firebase_config !== 'undefined') {
+            firebaseConfig = JSON.parse(__firebase_config);
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        
+        let dbUser = null;
+        let currentView = 'login';
+        let currentParams = {};
+
+        // --- State Management ---
+        const defaultState = {
+            settings: {
+                siteName: 'المنصة',
+                geminiKey: '',
+                geminiModel: 'gemini-3.5-flash'
+            },
+            networks: [
+                { id: '1', name: 'راوتر 1', icon: '🌐', notes: 'كروت راوتر مخصصة', denominations: [
+                    { price: 5, available: ['CODE-5-001', 'CODE-5-002', 'CODE-5-003'], extracted: [] },
+                    { price: 10, available: ['CODE-10-001'], extracted: [] }
+                ]}
+            ],
+            prompts: [
+                { id: '1', name: 'كتابة إعلان', icon: '📢', staticPrompt: 'اكتب إعلان تسويقي جذاب عن:', generated: [] }
+            ],
+            customFeatures: [
+                { id: '1', name: 'سجل العملاء المميزين', fields: [{name: 'الاسم', type: 'text'}, {name: 'الحالة', type: 'select', options: ['نشط', 'غير نشط']}], records: [] }
+            ],
+            notes: [
+                { id: '1', title: 'نص ترحيبي', content: 'أهلاً بك في منصتنا، كيف يمكنني مساعدتك اليوم؟' }
+            ]
+        };
+
+        let appData = defaultState;
+        let currentUser = null; 
+
+        // إتاحة الدوال على المستوى العام (لتعمل مع أزرار HTML مباشرة بعد تحويل السكربت لـ Module)
+        window.loginWithGoogle = loginWithGoogle;
+        window.loginForm = loginForm;
+        window.logout = logout;
+        window.navigate = navigate;
+        window.closeModal = closeModal;
+        window.openExtractionModal = openExtractionModal;
+        window.confirmExtraction = confirmExtraction;
+        window.copyToClipboard = copyToClipboard;
+        window.openAddNetworkModal = openAddNetworkModal;
+        window.addNetwork = addNetwork;
+        window.deleteNetwork = deleteNetwork;
+        window.doDeleteNetwork = doDeleteNetwork;
+        window.openImportModal = openImportModal;
+        window.processImport = processImport;
+        window.openAddDenominationModal = openAddDenominationModal;
+        window.addDenomination = addDenomination;
+        window.addSingleCard = addSingleCard;
+        window.deleteCard = deleteCard;
+        window.openAddPromptModal = openAddPromptModal;
+        window.addPrompt = addPrompt;
+        window.updatePrompt = updatePrompt;
+        window.deletePrompt = deletePrompt;
+        window.runAi = runAi;
+        window.openAddFeatureModal = openAddFeatureModal;
+        window.addFeature = addFeature;
+        window.deleteFeature = deleteFeature;
+        window.addRecord = addRecord;
+        window.openAddNoteModal = openAddNoteModal;
+        window.addNote = addNote;
+        window.updateNote = updateNote;
+        window.deleteNote = deleteNote;
+        window.saveSettings = saveSettings;
+
+        // نظام المصادقة والمزامنة السحابية (Realtime Sync)
+        onAuthStateChanged(auth, (user) => {
+            if (user && !user.isAnonymous) {
+                dbUser = user;
+                currentUser = user.email || user.displayName || 'مستخدم Google';
+                setupRealtimeSync();
+                navigate('userHome');
+            } else {
+                dbUser = null;
+                currentUser = null;
+                navigate('login');
+            }
+        });
+
+        async function initAuth() {
+            if (!auth.currentUser) {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined') {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch(e) { console.error("Auth Init Error:", e); }
+            }
+        }
+        initAuth();
+
+        let unsubscribeSnapshot = null;
+
+        function setupRealtimeSync() {
+            if (!dbUser) return;
+            if (unsubscribeSnapshot) unsubscribeSnapshot();
+            
+            const docRef = doc(db, 'artifacts', appId, 'users', dbUser.uid, 'appData', 'state');
+            unsubscribeSnapshot = onSnapshot(docRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    appData = snapshot.data();
+                    updateGlobalUI();
+                    if(currentView !== 'login') navigate(currentView, currentParams, true);
+                } else {
+                    saveData(); // حفظ البيانات الافتراضية لأول مرة
+                }
+            }, (error) => {
+                console.error("Firestore Listen Failed:", error);
+            });
+        }
+        
+        async function saveData() {
+            updateGlobalUI();
+            if (!dbUser) return;
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'users', dbUser.uid, 'appData', 'state'), appData);
+            } catch (e) {
+                console.error(e);
+                showToast('خطأ في حفظ البيانات', 'error');
+            }
+        }
+
+        function updateGlobalUI() {
+            document.getElementById('nav-site-name').innerText = appData.settings.siteName;
+            document.getElementById('footer-site-name').innerText = appData.settings.siteName;
+            document.title = appData.settings.siteName;
+        }
+
+        // --- Core Functions ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgColor = type === 'success' ? 'bg-emerald-500' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
+            let icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-circle-exclamation' : 'fa-info-circle');
+
+            toast.className = `${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 transform transition-all duration-300 translate-y-10 opacity-0`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icon}"></i>
+                <span class="font-medium text-sm">${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Animate in
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            });
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function openModal(title, bodyHTML, footerHTML = '') {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-body').innerHTML = bodyHTML;
+            
+            const footer = document.getElementById('modal-footer');
+            if (footerHTML) {
+                footer.innerHTML = footerHTML;
+                footer.classList.remove('hidden');
+            } else {
+                footer.classList.add('hidden');
+            }
+
+            const backdrop = document.getElementById('modal-backdrop');
+            const content = document.getElementById('modal-content');
+            backdrop.classList.remove('hidden');
+            
+            // small delay for transition
+            requestAnimationFrame(() => {
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            });
+        }
+
+        function closeModal() {
+            const backdrop = document.getElementById('modal-backdrop');
+            const content = document.getElementById('modal-content');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            
+            setTimeout(() => {
+                backdrop.classList.add('hidden');
+            }, 200);
+        }
+
+        function copyToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast('تم النسخ بنجاح');
+            } catch (err) {
+                showToast('فشل النسخ', 'error');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+
+        // --- Navigation & Rendering ---
+        const contentArea = document.getElementById('app-content');
+        const navbar = document.getElementById('navbar');
+
+        function navigate(view, params = {}, isRefresh = false) {
+            currentView = view;
+            currentParams = params;
+            
+            contentArea.innerHTML = '';
+            if(!isRefresh) closeModal();
+            updateGlobalUI();
+
+            if (view === 'login') {
+                navbar.classList.add('hidden');
+                renderLogin();
+                return;
+            }
+
+            if (!currentUser) {
+                navigate('login');
+                return;
+            }
+
+            navbar.classList.remove('hidden');
+            document.getElementById('nav-user-email').innerText = currentUser;
+
+            switch(view) {
+                case 'userHome': renderUserHome(); break;
+                case 'userNetworks': renderUserNetworks(); break;
+                case 'userNetworkDetail': renderUserNetworkDetail(params.id); break;
+                case 'userMyCards': renderUserMyCards(); break;
+                case 'userPrompts': renderUserPrompts(); break;
+                case 'userPromptDetail': renderUserPromptDetail(params.id); break;
+                case 'userCustomFeatures': renderUserCustomFeatures(); break;
+                case 'userFeatureDetail': renderUserFeatureDetail(params.id); break;
+                case 'userNotes': renderUserNotes(); break;
+                
+                case 'adminHome': renderAdminHome(); break;
+                case 'adminNetworks': renderAdminNetworks(); break;
+                case 'adminNetworkDetail': renderAdminNetworkDetail(params.id); break;
+                case 'adminPrompts': renderAdminPrompts(); break;
+                case 'adminCustomFeatures': renderAdminCustomFeatures(); break;
+                case 'adminNotes': renderAdminNotes(); break;
+                case 'adminSettings': renderAdminSettings(); break;
+                default: renderUserHome();
+            }
+        }
+
+        async function loginWithGoogle(event) {
+            if(event) event.preventDefault();
+            try {
+                await signInWithPopup(auth, provider);
+                showToast('تم تسجيل الدخول بنجاح');
+            } catch (error) {
+                showToast('فشل تسجيل الدخول: ' + error.message, 'error');
+            }
+        }
+
+        function loginForm(event) {
+            event.preventDefault();
+            showToast('الرجاء استخدام "تسجيل الدخول بجوجل" لضمان حفظ البيانات السحابي', 'info');
+        }
+
+        async function logout() {
+            try {
+                await signOut(auth);
+                showToast('تم تسجيل الخروج');
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        // --- Views: Authentication ---
+        function renderLogin() {
+            contentArea.innerHTML = `
+                <div class="flex-grow flex items-center justify-center p-4">
+                    <div class="glass-card w-full max-w-md rounded-2xl p-8 shadow-xl">
+                        <div class="text-center mb-8">
+                            <div class="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fa-solid fa-layer-group text-3xl text-brand-600"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-900">Welcome back</h2>
+                            <p class="text-gray-500 mt-2">قم بتسجيل الدخول للمتابعة</p>
+                        </div>
+                        
+                        <button type="button" onclick="loginWithGoogle(event)" class="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors mb-6 shadow-sm hover:shadow">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google" class="w-5 h-5">
+                            Continue with Google
+                        </button>
+                        
+                        <div class="relative flex items-center justify-center mb-6">
+                            <div class="border-t border-gray-200 w-full absolute"></div>
+                            <span class="bg-white px-4 text-xs text-gray-400 font-semibold uppercase relative z-10">OR</span>
+                        </div>
+
+                        <form onsubmit="loginForm(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">البريد الإلكتروني</label>
+                                <input type="email" id="email" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all" placeholder="name@example.com">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">كلمة المرور</label>
+                                <input type="password" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all" placeholder="••••••••">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <a href="#" class="text-xs text-brand-600 hover:text-brand-500 font-medium">نسيت كلمة المرور؟</a>
+                            </div>
+                            <button type="submit" class="w-full bg-brand-500 text-white rounded-xl px-4 py-3 font-semibold hover:bg-brand-600 focus:ring-4 focus:ring-brand-100 transition-all">
+                                Log in
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Shared Components ---
+        function renderCardButton(icon, title, desc, onClick) {
+            return `
+                <div onclick="${onClick}" class="glass-card p-6 rounded-2xl cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group border border-gray-100">
+                    <div class="w-12 h-12 bg-brand-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-brand-100 transition-colors">
+                        <i class="${icon} text-2xl text-brand-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">${title}</h3>
+                    <p class="text-gray-500 text-sm leading-relaxed">${desc}</p>
+                </div>
+            `;
+        }
+
+        // --- Views: User ---
+        function renderUserHome() {
+            contentArea.innerHTML = `
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900">مرحباً بعودتك! 👋</h1>
+                    <p class="text-gray-500 mt-2">اختر الخدمة التي تريد استخدامها من القائمة أدناه.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    ${renderCardButton('fa-solid fa-wifi', 'كروت الشحن', 'استخراج وبيع كروت الإنترنت والشبكات', "navigate('userNetworks')")}
+                    ${renderCardButton('fa-solid fa-wallet', 'كروتي', 'سجل الكروت التي قمت باستخراجها مؤخراً', "navigate('userMyCards')")}
+                    ${renderCardButton('fa-solid fa-wand-magic-sparkles', 'البرومبتات', 'قوالب الذكاء الاصطناعي الجاهزة للنسخ والاستخدام', "navigate('userPrompts')")}
+                    ${renderCardButton('fa-solid fa-table-list', 'ميزات مخصصة', 'الوصول للسجلات وقواعد البيانات المخصصة', "navigate('userCustomFeatures')")}
+                    ${renderCardButton('fa-regular fa-note-sticky', 'الملاحظات', 'النصوص المحفوظة، الـ Hooks والرسائل الجاهزة', "navigate('userNotes')")}
+                </div>
+            `;
+        }
+
+        function renderUserNetworks() {
+            let html = `
+                <div class="flex items-center gap-4 mb-8">
+                    <button onclick="navigate('userHome')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                    <h1 class="text-3xl font-bold text-gray-900">استخراج كروت الشحن</h1>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            `;
+            
+            if(appData.networks.length === 0) {
+                html += `<div class="col-span-full text-center py-12 text-gray-400">لا توجد شبكات مضافة حالياً.</div>`;
+            } else {
+                appData.networks.forEach(net => {
+                    html += `
+                        <div onclick="navigate('userNetworkDetail', {id: '${net.id}'})" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-brand-300 transition-all text-center flex flex-col items-center justify-center min-h-[140px]">
+                            <div class="text-4xl mb-3">${net.icon}</div>
+                            <h3 class="font-semibold text-gray-800">${net.name}</h3>
+                        </div>
+                    `;
+                });
+            }
+            html += `</div>`;
+            contentArea.innerHTML = html;
+        }
+
+        function renderUserNetworkDetail(networkId) {
+            const net = appData.networks.find(n => n.id === networkId);
+            if(!net) return navigate('userNetworks');
+
+            let html = `
+                <div class="flex items-center gap-4 mb-8">
+                    <button onclick="navigate('userNetworks')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">${net.icon} ${net.name}</h1>
+                        ${net.notes ? `<p class="text-sm text-gray-500 mt-1">${net.notes}</p>` : ''}
+                    </div>
+                </div>
+                
+                <h2 class="text-lg font-bold text-gray-700 mb-4">فئات الأسعار المتاحة:</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10">
+            `;
+
+            net.denominations.sort((a,b) => a.price - b.price).forEach((den, idx) => {
+                const count = den.available.length;
+                html += `
+                    <div onclick="openExtractionModal('${net.id}', ${idx})" class="bg-white p-4 rounded-xl border-2 ${count > 0 ? 'border-gray-200 hover:border-brand-500 cursor-pointer' : 'border-gray-100 opacity-50 cursor-not-allowed'} transition-colors relative overflow-hidden group">
+                        ${count > 0 ? `<div class="absolute top-0 right-0 w-16 h-16 bg-brand-50 rounded-bl-full -z-10 group-hover:bg-brand-100 transition-colors"></div>` : ''}
+                        <div class="text-2xl font-black text-gray-900 mb-1">${den.price} <span class="text-sm font-medium text-gray-500">ج.م</span></div>
+                        <div class="text-sm ${count > 0 ? 'text-brand-600 font-semibold' : 'text-gray-400'}">${count} متاح</div>
+                    </div>
+                `;
+            });
+
+            html += `
+                </div>
+                
+                <h2 class="text-lg font-bold text-gray-700 mb-4">الكروت المستخرجة (هذه الشبكة):</h2>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-right">
+                            <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-4 py-3 font-semibold">الفئة</th>
+                                    <th class="px-4 py-3 font-semibold">رقم الكارت</th>
+                                    <th class="px-4 py-3 font-semibold">العميل / الملاحظات</th>
+                                    <th class="px-4 py-3 font-semibold">التاريخ</th>
+                                    <th class="px-4 py-3 font-semibold text-center">إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+            `;
+
+            let hasExtracted = false;
+            net.denominations.forEach(den => {
+                den.extracted.forEach(ex => {
+                    hasExtracted = true;
+                    html += `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-3 font-bold text-gray-900">${den.price} ج</td>
+                            <td class="px-4 py-3 font-mono text-gray-600">${ex.code}</td>
+                            <td class="px-4 py-3 text-gray-600">${ex.note || '-'}</td>
+                            <td class="px-4 py-3 text-gray-500 text-xs">
+                                <div>${new Date(ex.date).toLocaleDateString('ar-EG')}</div>
+                                <div class="text-orange-500 mt-1">ينتهي خلال 30 يوم</div>
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                <button onclick="copyToClipboard('${ex.code}')" class="text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 p-2 rounded-lg transition-colors">
+                                    <i class="fa-regular fa-copy"></i> نسخ
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+
+            if(!hasExtracted) {
+                html += `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">لا توجد كروت مستخرجة</td></tr>`;
+            }
+
+            html += `</tbody></table></div></div>`;
+            contentArea.innerHTML = html;
+        }
+
+        function openExtractionModal(networkId, denIndex) {
+            const net = appData.networks.find(n => n.id === networkId);
+            const den = net.denominations[denIndex];
+            
+            if(den.available.length === 0) {
+                showToast('عذراً، لا يوجد كروت متاحة لهذه الفئة', 'error');
+                return;
+            }
+
+            const body = `
+                <div class="mb-4">
+                    <p class="text-gray-600 mb-4">أنت على وشك استخراج كارت فئة <span class="font-bold text-gray-900">${den.price} ج.م</span> من شبكة <span class="font-bold text-gray-900">${net.name}</span>.</p>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">ملاحظات على الكارت (اسم العميل / رقمه)</label>
+                    <input type="text" id="extract-note" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none" placeholder="مثال: أحمد - 010...">
+                </div>
+            `;
+            const footer = `
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">إلغاء</button>
+                <button onclick="confirmExtraction('${networkId}', ${denIndex})" class="px-6 py-2 bg-brand-500 text-white font-bold rounded-lg hover:bg-brand-600 shadow-sm transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> استخراج كارت
+                </button>
+            `;
+            openModal(`استخراج كارت (${den.price} ج)`, body, footer);
+        }
+
+        function confirmExtraction(networkId, denIndex) {
+            const net = appData.networks.find(n => n.id === networkId);
+            const den = net.denominations[denIndex];
+            const note = document.getElementById('extract-note').value;
+            
+            if(den.available.length > 0) {
+                const code = den.available.shift(); // take first
+                const extractedCard = {
+                    code: code,
+                    note: note,
+                    date: new Date().toISOString()
+                };
+                den.extracted.unshift(extractedCard); // add to top
+                saveData();
+                closeModal();
+                showToast('تم استخراج الكارت بنجاح');
+                navigate('userNetworkDetail', {id: networkId});
+                
+                // Show the code immediately to the user
+                setTimeout(() => {
+                    openModal('تفاصيل الكارت المستخرج', `
+                        <div class="text-center py-6">
+                            <div class="text-sm text-gray-500 mb-2">رقم الكارت:</div>
+                            <div class="text-3xl font-mono font-bold text-brand-600 mb-6 tracking-widest bg-brand-50 py-3 rounded-xl border border-brand-100">${code}</div>
+                            <button onclick="copyToClipboard('${code}')" class="px-6 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors shadow-md">
+                                <i class="fa-regular fa-copy mr-2"></i> نسخ الكارت
+                            </button>
+                        </div>
+                    `);
+                }, 400);
+            }
+        }
+
+        function renderUserMyCards() {
+            let html = `
+                <div class="flex items-center gap-4 mb-8">
+                    <button onclick="navigate('userHome')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                    <h1 class="text-3xl font-bold text-gray-900">كروتي (آخر 30 يوم)</h1>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-right">
+                            <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-6 py-4 font-semibold">الشبكة</th>
+                                    <th class="px-6 py-4 font-semibold">الفئة</th>
+                                    <th class="px-6 py-4 font-semibold">رقم الكارت</th>
+                                    <th class="px-6 py-4 font-semibold">ملاحظات</th>
+                                    <th class="px-6 py-4 font-semibold">تاريخ الاستخراج</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+            `;
+
+            let allExtracted = [];
+            appData.networks.forEach(net => {
+                net.denominations.forEach(den => {
+                    den.extracted.forEach(ex => {
+                        allExtracted.push({
+                            network: net.name,
+                            icon: net.icon,
+                            price: den.price,
+                            ...ex
+                        });
+                    });
+                });
+            });
+
+            allExtracted.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            if(allExtracted.length === 0) {
+                html += `<tr><td colspan="5" class="px-6 py-12 text-center text-gray-400">لا يوجد سجل للكروت المستخرجة</td></tr>`;
+            } else {
+                allExtracted.forEach(item => {
+                    html += `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">${item.icon} ${item.network}</td>
+                            <td class="px-6 py-4 font-bold text-brand-600">${item.price} ج</td>
+                            <td class="px-6 py-4 font-mono text-gray-600">
+                                <div class="flex items-center justify-between">
+                                    ${item.code}
+                                    <button onclick="copyToClipboard('${item.code}')" class="text-gray-400 hover:text-brand-600"><i class="fa-regular fa-copy"></i></button>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-gray-600">${item.note || '-'}</td>
+                            <td class="px-6 py-4 text-gray-500 text-xs">
+                                ${new Date(item.date).toLocaleString('ar-EG')}
+                                <div class="text-orange-500 mt-1">ينتهي خلال 30 يوم</div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            html += `</tbody></table></div></div>`;
+            contentArea.innerHTML = html;
+        }
+
+        function renderUserPrompts() {
+            let html = `
+                <div class="flex items-center gap-4 mb-8">
+                    <button onclick="navigate('userHome')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                    <h1 class="text-3xl font-bold text-gray-900">البرومبتات والقوالب</h1>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            `;
+            
+            if(appData.prompts.length === 0) {
+                html += `<div class="col-span-full text-center py-12 text-gray-400">لا توجد قوالب مضافة.</div>`;
+            } else {
+                appData.prompts.forEach(p => {
+                    html += `
+                        <div onclick="navigate('userPromptDetail', {id: '${p.id}'})" class="bg-white p-6 rounded-2xl border border-gray-200 cursor-pointer hover:shadow-md hover:border-brand-300 transition-all group">
+                            <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
+                                ${p.icon}
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900 mb-2">${p.name}</h3>
+                            <p class="text-gray-500 text-sm line-clamp-2">${p.staticPrompt}</p>
+                            <div class="mt-4 text-xs font-semibold text-brand-600 bg-brand-50 inline-block px-3 py-1 rounded-full">
+                                ${p.generated.length} سجل سابق
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            html += `</div>`;
+            contentArea.innerHTML = html;
+        }
+
+        function renderUserPromptDetail(id) {
+            const prompt = appData.prompts.find(p => p.id === id);
+            if(!prompt) return navigate('userPrompts');
+
+            let html = `
+                <div class="flex items-center justify-between mb-8">
+                    <div class="flex items-center gap-4">
+                        <button onclick="navigate('userPrompts')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">${prompt.icon} ${prompt.name}</h1>
+                    </div>
+                </div>
+                
+                <div class="bg-brand-50 text-brand-800 p-4 rounded-xl border border-brand-100 mb-8 flex gap-3 items-start">
+                    <i class="fa-solid fa-circle-info mt-1"></i>
+                    <div>
+                        <div class="font-bold text-sm mb-1">البرومبت الأساسي:</div>
+                        <div class="text-sm font-medium opacity-80">${prompt.staticPrompt}</div>
+                    </div>
+                </div>
+
+                <h2 class="text-lg font-bold text-gray-700 mb-4">الاسكربتات السابقة المولدة:</h2>
+                <div class="space-y-4">
+            `;
+
+            if(prompt.generated.length === 0) {
+                html += `<div class="text-center py-12 bg-white rounded-2xl border border-gray-100 text-gray-400">لا توجد نصوص مولدة سابقاً لهذا القالب.</div>`;
+            } else {
+                prompt.generated.slice().reverse().forEach(gen => {
+                    html += `
+                        <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm relative pr-12">
+                            <div class="absolute right-4 top-5 text-gray-300"><i class="fa-solid fa-quote-right text-2xl"></i></div>
+                            <div class="mb-3 text-sm text-gray-500 flex justify-between items-center">
+                                <span class="font-medium text-gray-700">المدخلات: ${gen.input}</span>
+                                <span class="text-xs bg-gray-100 px-2 py-1 rounded">${new Date(gen.date).toLocaleDateString('ar-EG')}</span>
+                            </div>
+                            <div class="text-gray-800 whitespace-pre-wrap font-medium leading-relaxed">${gen.output}</div>
+                            <div class="mt-4 flex justify-end">
+                                <button onclick="copyToClipboard(\`${gen.output.replace(/`/g, '\\`')}\`)" class="text-sm text-brand-600 hover:text-brand-800 font-bold bg-brand-50 px-3 py-1.5 rounded-lg transition-colors">
+                                    <i class="fa-regular fa-copy mr-1"></i> نسخ النص
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            html += `</div>`;
+            contentArea.innerHTML = html;
+        }
+
+        function renderUserCustomFeatures() {
+            let html = `
+                <div class="flex items-center gap-4 mb-8">
+                    <button onclick="navigate('userHome')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                    <h1 class="text-3xl font-bold text-gray-900">الميزات المخصصة</h1>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            `;
+            
+            if(appData.customFeatures.length === 0) {
+                html += `<div class="col-span-full text-center py-12 text-gray-400">لا توجد ميزات مخصصة.</div>`;
+            } else {
+                appData.customFeatures.forEach(f => {
+                    html += `
+                        <div onclick="navigate('userFeatureDetail', {id: '${f.id}'})" class="bg-white p-6 rounded-2xl border border-gray-200 cursor-pointer hover:shadow-md hover:border-brand-300 transition-all flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center text-xl">
+                                    <i class="fa-solid fa-table-list"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-900">${f.name}</h3>
+                                    <p class="text-xs text-gray-500">${f.records.length} سجل متاح</p>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-left text-gray-300"></i>
+                        </div>
+                    `;
+                });
+            }
+            html += `</div>`;
+            contentArea.innerHTML = html;
+        }
+
+        function renderUserFeatureDetail(id) {
+            const feat = appData.customFeatures.find(f => f.id === id);
+            if(!feat) return navigate('userCustomFeatures');
+
+            let html = `
+                <div class="flex items-center gap-4 mb-8">
+                    <button onclick="navigate('userCustomFeatures')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                    <h1 class="text-2xl font-bold text-gray-900">${feat.name}</h1>
+                </div>
+                
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-right">
+                            <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+                                <tr>
+            `;
+            feat.fields.forEach(field => {
+                html += `<th class="px-6 py-4 font-semibold">${field.name}</th>`;
+            });
+            html += `           </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+            `;
+
+            if(feat.records.length === 0) {
+                html += `<tr><td colspan="${feat.fields.length}" class="px-6 py-12 text-center text-gray-400">لا توجد سجلات.</td></tr>`;
+            } else {
+                feat.records.forEach(rec => {
+                    html += `<tr class="hover:bg-gray-50">`;
+                    feat.fields.forEach(field => {
+                        let val = rec[field.name] || '-';
+                        if(field.type === 'select') {
+                            val = `<span class="bg-gray-100 px-2 py-1 rounded text-xs font-medium">${val}</span>`;
+                        }
+                        html += `<td class="px-6 py-4 text-gray-800">${val}</td>`;
+                    });
+                    html += `</tr>`;
+                });
+            }
+
+            html += `</tbody></table></div></div>`;
+            contentArea.innerHTML = html;
+        }
+
+        function renderUserNotes() {
+            let html = `
+                <div class="flex items-center gap-4 mb-8">
+                    <button onclick="navigate('userHome')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                    <h1 class="text-3xl font-bold text-gray-900">الملاحظات و Hooks</h1>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            `;
+            
+            if(appData.notes.length === 0) {
+                html += `<div class="col-span-full text-center py-12 text-gray-400">لا توجد ملاحظات محفوظة.</div>`;
+            } else {
+                appData.notes.forEach(note => {
+                    html += `
+                        <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col h-full relative group hover:shadow-md transition-shadow">
+                            <button onclick="copyToClipboard(\`${note.content.replace(/`/g, '\\`')}\`)" class="absolute top-4 left-4 text-gray-400 hover:text-brand-600 transition-colors" title="نسخ">
+                                <i class="fa-regular fa-copy text-lg"></i>
+                            </button>
+                            <h3 class="text-lg font-bold text-gray-900 mb-3 pr-8">${note.title}</h3>
+                            <div class="text-gray-600 text-sm whitespace-pre-wrap flex-grow overflow-y-auto max-h-32 mb-4 custom-scrollbar">${note.content}</div>
+                            <div class="mt-auto pt-3 border-t border-gray-100">
+                                <button onclick="copyToClipboard(\`${note.content.replace(/`/g, '\\`')}\`)" class="w-full text-center text-brand-600 hover:bg-brand-50 py-2 rounded-lg font-bold text-sm transition-colors">
+                                    نسخ النص
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            html += `</div>`;
+            contentArea.innerHTML = html;
+        }
+
+
+        // --- Views: Admin Dashboard ---
+        function renderAdminHome() {
+            contentArea.innerHTML = `
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <i class="fa-solid fa-shield-halved text-brand-500"></i> لوحة التحكم
+                    </h1>
+                    <p class="text-gray-500 mt-2">إدارة المحتوى والإعدادات للمنصة.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    ${renderCardButton('fa-solid fa-wifi', 'إدارة الكروت', 'إضافة وتعديل الشبكات وفئات الأسعار', "navigate('adminNetworks')")}
+                    ${renderCardButton('fa-solid fa-wand-magic-sparkles', 'إدارة البرومبتات', 'إنشاء قوالب وتوليد المحتوى بالذكاء الاصطناعي', "navigate('adminPrompts')")}
+                    ${renderCardButton('fa-solid fa-table-list', 'إدارة الميزات', 'بناء نماذج ديناميكية وإدارة السجلات', "navigate('adminCustomFeatures')")}
+                    ${renderCardButton('fa-regular fa-note-sticky', 'إدارة الملاحظات', 'إضافة وتعديل النصوص الجاهزة', "navigate('adminNotes')")}
+                    ${renderCardButton('fa-solid fa-gear', 'الإعدادات', 'إعدادات الموقع، API، ونماذج الذكاء', "navigate('adminSettings')")}
+                </div>
+            `;
+        }
+
+        // Admin: Networks
+        function renderAdminNetworks() {
+            let html = `
+                <div class="flex items-center justify-between mb-8">
+                    <div class="flex items-center gap-4">
+                        <button onclick="navigate('adminHome')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                        <h1 class="text-2xl font-bold text-gray-900">إدارة شبكات الكروت</h1>
+                    </div>
+                    <button onclick="openAddNetworkModal()" class="bg-brand-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-brand-600 transition-colors shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> إضافة شبكة
+                    </button>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <ul class="divide-y divide-gray-100">
+            `;
+            
+            if(appData.networks.length === 0) {
+                html += `<li class="p-8 text-center text-gray-400">لا توجد شبكات مضافة.</li>`;
+            } else {
+                appData.networks.forEach(net => {
+                    let totalAvailable = net.denominations.reduce((acc, curr) => acc + curr.available.length, 0);
+                    html += `
+                        <li class="p-4 sm:px-6 hover:bg-gray-50 transition-colors flex items-center justify-between group">
+                            <div class="flex items-center gap-4">
+                                <div class="text-3xl">${net.icon}</div>
+                                <div>
+                                    <h3 class="font-bold text-gray-900 text-lg">${net.name}</h3>
+                                    <p class="text-sm text-gray-500">${net.denominations.length} فئات | <span class="text-brand-600 font-semibold">${totalAvailable} كارت متاح</span></p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="navigate('adminNetworkDetail', {id: '${net.id}'})" class="bg-white border border-gray-200 text-gray-700 hover:bg-brand-50 hover:text-brand-600 hover:border-brand-200 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">
+                                    إدارة الفئات والكروت
+                                </button>
+                                <button onclick="deleteNetwork('${net.id}')" class="text-gray-400 hover:text-red-500 p-2 rounded-lg transition-colors" title="حذف">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </li>
+                    `;
+                });
+            }
+            html += `</ul></div>`;
+            contentArea.innerHTML = html;
+        }
+
+        function openAddNetworkModal() {
+            const body = `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">اسم الشبكة</label>
+                        <input type="text" id="net-name" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">أيقونة (إيموجي)</label>
+                        <input type="text" id="net-icon" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-brand-500 outline-none" value="🌐">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">معلومات / ملاحظات</label>
+                        <input type="text" id="net-notes" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-brand-500 outline-none">
+                    </div>
+                </div>
+            `;
+            const footer = `
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">إلغاء</button>
+                <button onclick="addNetwork()" class="px-6 py-2 bg-brand-500 text-white font-bold rounded-lg hover:bg-brand-600">إضافة</button>
+            `;
+            openModal('إضافة شبكة جديدة', body, footer);
+        }
+
+        function addNetwork() {
+            const name = document.getElementById('net-name').value;
+            const icon = document.getElementById('net-icon').value || '🌐';
+            const notes = document.getElementById('net-notes').value;
+            
+            if(!name) return showToast('الرجاء إدخال اسم الشبكة', 'error');
+
+            appData.networks.push({
+                id: generateId(),
+                name, icon, notes, denominations: []
+            });
+            saveData();
+            closeModal();
+            showToast('تمت الإضافة بنجاح');
+            navigate('adminNetworks');
+        }
+
+        function deleteNetwork(id) {
+            // Note: In real app use custom confirm modal, here simulating directly for speed unless we build a full confirm modal.
+            // Requirement says no confirm(). I'll build a quick inline delete mechanism or just delete it.
+            // Let's implement a confirm modal.
+            openModal('تأكيد الحذف', `<p>هل أنت متأكد من حذف هذه الشبكة نهائياً بجميع كروتها؟</p>`, `
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg">إلغاء</button>
+                <button onclick="doDeleteNetwork('${id}')" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">حذف نهائي</button>
+            `);
+        }
+        function doDeleteNetwork(id) {
+            appData.networks = appData.networks.filter(n => n.id !== id);
+            saveData();
+            closeModal();
+            showToast('تم الحذف');
+            navigate('adminNetworks');
+        }
+
+        function renderAdminNetworkDetail(id) {
+            const net = appData.networks.find(n => n.id === id);
+            if(!net) return navigate('adminNetworks');
+
+            let html = `
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div class="flex items-center gap-4">
+                        <button onclick="navigate('adminNetworks')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">إدارة: ${net.icon} ${net.name}</h1>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="openImportModal('${id}')" class="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-900 transition-colors shadow-sm flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-file-import"></i> استيراد كروت (JSON)
+                        </button>
+                        <button onclick="openAddDenominationModal('${id}')" class="bg-brand-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-brand-600 transition-colors shadow-sm flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-plus"></i> إضافة فئة جديدة
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            `;
+
+            net.denominations.forEach((den, idx) => {
+                html += `
+                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col h-96">
+                        <div class="px-5 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <h3 class="font-black text-xl text-gray-900">فئة ${den.price} ج.م</h3>
+                            <span class="bg-brand-100 text-brand-700 text-xs font-bold px-2 py-1 rounded-full">${den.available.length} متاح</span>
+                        </div>
+                        <div class="p-4 flex-grow overflow-y-auto custom-scrollbar bg-white">
+                            <ul class="space-y-2">
+                `;
+                if(den.available.length === 0) {
+                    html += `<li class="text-sm text-gray-400 text-center py-4">لا توجد كروت متاحة.</li>`;
+                } else {
+                    den.available.forEach((cardCode, cardIdx) => {
+                        html += `
+                            <li class="flex justify-between items-center bg-gray-50 p-2 rounded-lg border border-gray-100 group">
+                                <span class="font-mono text-sm text-gray-700">${cardCode}</span>
+                                <button onclick="deleteCard('${id}', ${idx}, ${cardIdx})" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-trash"></i></button>
+                            </li>
+                        `;
+                    });
+                }
+                html += `
+                            </ul>
+                        </div>
+                        <div class="p-4 border-t border-gray-100 bg-gray-50 mt-auto">
+                            <div class="flex gap-2">
+                                <input type="text" id="new-card-${idx}" placeholder="كود الكارت الجديد..." class="flex-grow px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-brand-500">
+                                <button onclick="addSingleCard('${id}', ${idx})" class="bg-gray-800 text-white px-3 rounded-lg hover:bg-gray-900"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            contentArea.innerHTML = html;
+        }
+
+        function openAddDenominationModal(netId) {
+            openModal('إضافة فئة سعر جديدة', `
+                <label class="block text-sm font-medium text-gray-700 mb-1">السعر (ج.م)</label>
+                <input type="number" id="den-price" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-brand-500 outline-none">
+            `, `
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">إلغاء</button>
+                <button onclick="addDenomination('${netId}')" class="px-6 py-2 bg-brand-500 text-white font-bold rounded-lg hover:bg-brand-600">حفظ</button>
+            `);
+        }
+        function addDenomination(netId) {
+            const price = parseInt(document.getElementById('den-price').value);
+            if(!price || isNaN(price)) return showToast('الرجاء إدخال سعر صحيح', 'error');
+            
+            const net = appData.networks.find(n => n.id === netId);
+            if(net.denominations.some(d => d.price === price)) return showToast('الفئة موجودة بالفعل', 'error');
+
+            net.denominations.push({ price, available: [], extracted: [] });
+            saveData();
+            closeModal();
+            navigate('adminNetworkDetail', {id: netId});
+        }
+
+        function addSingleCard(netId, denIndex) {
+            const input = document.getElementById(`new-card-${denIndex}`);
+            const code = input.value.trim();
+            if(!code) return;
+            
+            const net = appData.networks.find(n => n.id === netId);
+            net.denominations[denIndex].available.push(code);
+            saveData();
+            input.value = '';
+            navigate('adminNetworkDetail', {id: netId});
+        }
+
+        function deleteCard(netId, denIndex, cardIndex) {
+            const net = appData.networks.find(n => n.id === netId);
+            net.denominations[denIndex].available.splice(cardIndex, 1);
+            saveData();
+            navigate('adminNetworkDetail', {id: netId});
+        }
+
+        function openImportModal(netId) {
+            openModal('استيراد كروت (نص JSON)', `
+                <p class="text-xs text-gray-500 mb-2">صيغة JSON المطلوبة: مصفوفة تحتوي على كائنات بها code و price. مثال:<br>
+                <code>[{"price":5, "code":"123"}, {"price":10, "code":"456"}]</code>
+                </p>
+                <textarea id="import-json" rows="6" class="w-full px-4 py-2 rounded-lg border border-gray-300 font-mono text-sm outline-none focus:border-brand-500" dir="ltr" placeholder="[{&quot;price&quot;: 5, &quot;code&quot;: &quot;...&quot;}]"></textarea>
+            `, `
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">إلغاء</button>
+                <button onclick="processImport('${netId}')" class="px-6 py-2 bg-gray-800 text-white font-bold rounded-lg hover:bg-gray-900">استيراد</button>
+            `);
+        }
+
+        function processImport(netId) {
+            const jsonStr = document.getElementById('import-json').value;
+            try {
+                const data = JSON.parse(jsonStr);
+                if(!Array.isArray(data)) throw new Error('يجب أن يكون JSON مصفوفة (Array)');
+                
+                const net = appData.networks.find(n => n.id === netId);
+                let addedCount = 0;
+
+                data.forEach(item => {
+                    if(item.price && item.code) {
+                        let den = net.denominations.find(d => d.price === item.price);
+                        if(!den) {
+                            den = { price: item.price, available: [], extracted: [] };
+                            net.denominations.push(den);
+                        }
+                        den.available.push(String(item.code));
+                        addedCount++;
+                    }
+                });
+
+                saveData();
+                closeModal();
+                showToast(`تم استيراد ${addedCount} كارت بنجاح`);
+                navigate('adminNetworkDetail', {id: netId});
+
+            } catch (e) {
+                showToast('خطأ في صيغة JSON: ' + e.message, 'error');
+            }
+        }
+
+        // Admin: Prompts
+        function renderAdminPrompts() {
+            let html = `
+                <div class="flex items-center justify-between mb-8">
+                    <div class="flex items-center gap-4">
+                        <button onclick="navigate('adminHome')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                        <h1 class="text-2xl font-bold text-gray-900">إدارة برومبتات الذكاء الاصطناعي</h1>
+                    </div>
+                    <button onclick="openAddPromptModal()" class="bg-brand-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-brand-600 shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> إضافة قالب
+                    </button>
+                </div>
+                <div class="space-y-6">
+            `;
+            
+            appData.prompts.forEach(p => {
+                html += `
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                                <span class="text-3xl">${p.icon}</span>
+                                <h3 class="font-bold text-xl text-gray-900">${p.name}</h3>
+                            </div>
+                            <button onclick="deletePrompt('${p.id}')" class="text-red-400 hover:text-red-600 bg-red-50 p-2 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">البرومبت الثابت</label>
+                            <textarea id="edit-p-static-${p.id}" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-brand-500 outline-none bg-gray-50" rows="2">${p.staticPrompt}</textarea>
+                        </div>
+                        
+                        <div class="flex gap-2 mb-6">
+                            <button onclick="updatePrompt('${p.id}')" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-300 transition-colors">حفظ التعديل</button>
+                        </div>
+
+                        <!-- Run AI Section -->
+                        <div class="bg-brand-50 p-4 rounded-xl border border-brand-100">
+                            <h4 class="font-bold text-brand-800 mb-2 flex items-center gap-2"><i class="fa-solid fa-bolt"></i> تشغيل القالب وتوليد محتوى</h4>
+                            <div class="flex gap-2">
+                                <input type="text" id="run-input-${p.id}" placeholder="أدخل تفاصيل الطلب (مثال: منتج تخسيس طبيعي)..." class="flex-grow px-4 py-2 rounded-lg border border-brand-200 focus:border-brand-500 outline-none text-sm">
+                                <button onclick="runAi('${p.id}')" id="run-btn-${p.id}" class="bg-brand-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-brand-700 transition-colors flex items-center gap-2 whitespace-nowrap">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> شغل الذكاء
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            contentArea.innerHTML = html;
+        }
+
+        function openAddPromptModal() {
+            openModal('إضافة قالب برومبت جديد', `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">اسم القالب</label>
+                        <input type="text" id="p-name" class="w-full px-4 py-2 rounded-lg border border-gray-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">أيقونة</label>
+                        <input type="text" id="p-icon" class="w-full px-4 py-2 rounded-lg border border-gray-300" value="📝">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">البرومبت الثابت الذي سيُرسل دائماً للذكاء</label>
+                        <textarea id="p-static" class="w-full px-4 py-2 rounded-lg border border-gray-300 h-24" placeholder="مثال: اكتب رداً احترافياً لعميل يشتكي من الخدمة بناءً على المعطيات التالية:"></textarea>
+                    </div>
+                </div>
+            `, `
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg">إلغاء</button>
+                <button onclick="addPrompt()" class="px-6 py-2 bg-brand-500 text-white rounded-lg">إضافة</button>
+            `);
+        }
+
+        function addPrompt() {
+            const name = document.getElementById('p-name').value;
+            const icon = document.getElementById('p-icon').value || '📝';
+            const staticPrompt = document.getElementById('p-static').value;
+            
+            if(!name || !staticPrompt) return showToast('يرجى تعبئة الحقول المطلوبة', 'error');
+
+            appData.prompts.push({ id: generateId(), name, icon, staticPrompt, generated: [] });
+            saveData();
+            closeModal();
+            navigate('adminPrompts');
+        }
+        
+        function updatePrompt(id) {
+            const prompt = appData.prompts.find(p => p.id === id);
+            prompt.staticPrompt = document.getElementById(`edit-p-static-${id}`).value;
+            saveData();
+            showToast('تم تحديث البرومبت');
+        }
+
+        function deletePrompt(id) {
+            appData.prompts = appData.prompts.filter(p => p.id !== id);
+            saveData();
+            navigate('adminPrompts');
+        }
+
+        async function runAi(promptId) {
+            const inputEl = document.getElementById(`run-input-${promptId}`);
+            const btnEl = document.getElementById(`run-btn-${promptId}`);
+            const userInput = inputEl.value.trim();
+            const prompt = appData.prompts.find(p => p.id === promptId);
+            
+            if(!userInput) return showToast('يرجى إدخال تفاصيل الطلب', 'error');
+
+            const apiKey = appData.settings.geminiKey;
+            const modelName = appData.settings.geminiModel || 'gemini-3.5-flash';
+            
+            btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري التوليد...`;
+            btnEl.disabled = true;
+
+            const fullPrompt = `${prompt.staticPrompt}\n\nالمعطيات/الطلب: ${userInput}`;
+            let generatedText = "";
+
+            if(apiKey) {
+                // Actual API Call
+                try {
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+                    const payload = {
+                        contents: [{ parts: [{ text: fullPrompt }] }]
+                    };
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const result = await response.json();
+                    if(result.error) throw new Error(result.error.message);
+                    
+                    generatedText = result.candidates[0].content.parts[0].text;
+                } catch(err) {
+                    showToast('خطأ في API: ' + err.message, 'error');
+                    btnEl.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> شغل الذكاء`;
+                    btnEl.disabled = false;
+                    return;
+                }
+            } else {
+                // Mock API Call if no key
+                await new Promise(r => setTimeout(r, 1500));
+                generatedText = `[محاكاة ذكاء اصطناعي - يرجى إدخال مفتاح API حقيقي في الإعدادات]\n\nبناءً على طلبك ("${userInput}")، إليك الرد المقترح:\nهذا نص تجريبي يوضح كيف سيظهر رد الذكاء الاصطناعي على منصتك بصورة منسقة وجميلة.`;
+            }
+
+            prompt.generated.push({
+                input: userInput,
+                output: generatedText,
+                date: new Date().toISOString()
+            });
+            saveData();
+            
+            inputEl.value = '';
+            btnEl.innerHTML = `<i class="fa-solid fa-check"></i> تم التوليد`;
+            setTimeout(() => {
+                navigate('adminPrompts');
+                // Open result modal to show it immediately
+                openModal('نتيجة التوليد', `
+                    <div class="whitespace-pre-wrap text-gray-800 bg-gray-50 p-4 rounded-lg border border-gray-200">${generatedText}</div>
+                `, `
+                    <button onclick="closeModal()" class="px-4 py-2 bg-gray-100 rounded-lg">إغلاق</button>
+                    <button onclick="copyToClipboard(\`${generatedText.replace(/`/g, '\\`')}\`)" class="px-4 py-2 bg-brand-500 text-white rounded-lg">نسخ النص</button>
+                `);
+            }, 500);
+        }
+
+        // Admin: Custom Features (Dynamic Form Builder)
+        function renderAdminCustomFeatures() {
+            let html = `
+                <div class="flex items-center justify-between mb-8">
+                    <div class="flex items-center gap-4">
+                        <button onclick="navigate('adminHome')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                        <h1 class="text-2xl font-bold text-gray-900">منشئ الميزات الديناميكية</h1>
+                    </div>
+                    <button onclick="openAddFeatureModal()" class="bg-brand-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-brand-600 shadow-sm">
+                        <i class="fa-solid fa-plus"></i> ميزة/جدول جديد
+                    </button>
+                </div>
+                <div class="space-y-6">
+            `;
+            
+            appData.customFeatures.forEach(feat => {
+                html += `
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-xl text-gray-900">${feat.name}</h3>
+                            <button onclick="deleteFeature('${feat.id}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                        <div class="mb-4">
+                            <span class="text-sm text-gray-500">الحقول: </span>
+                            ${feat.fields.map(f => `<span class="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded mr-1">${f.name} (${f.type})</span>`).join('')}
+                        </div>
+                        <div class="border-t border-gray-100 pt-4 mt-4">
+                            <h4 class="font-semibold text-gray-800 mb-3 text-sm">إضافة سجل جديد:</h4>
+                            <div class="flex gap-2 flex-wrap items-end bg-gray-50 p-4 rounded-xl border border-gray-100">
+                `;
+                
+                feat.fields.forEach((field, fIdx) => {
+                    html += `<div class="flex-grow min-w-[150px]">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">${field.name}</label>
+                    `;
+                    if(field.type === 'select' && field.options) {
+                        html += `<select id="add-rec-${feat.id}-${fIdx}" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white outline-none">`;
+                        field.options.forEach(opt => {
+                            html += `<option value="${opt}">${opt}</option>`;
+                        });
+                        html += `</select>`;
+                    } else {
+                        html += `<input type="text" id="add-rec-${feat.id}-${fIdx}" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none">`;
+                    }
+                    html += `</div>`;
+                });
+
+                html += `
+                                <button onclick="addRecord('${feat.id}')" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-900 h-[38px]">إضافة</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            contentArea.innerHTML = html;
+        }
+
+        function openAddFeatureModal() {
+            // Simplified form builder for brevity
+            openModal('إنشاء جدول/ميزة جديدة', `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">اسم الميزة / الجدول</label>
+                        <input type="text" id="feat-name" class="w-full px-4 py-2 rounded-lg border border-gray-300">
+                    </div>
+                    <p class="text-xs text-gray-500">سيتم إنشاء حقلين افتراضيين: "الاسم" (نص) و "الحالة" (قائمة منسدلة). يمكن تخصيصها أكثر برمجياً في النسخة المتقدمة.</p>
+                </div>
+            `, `
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg">إلغاء</button>
+                <button onclick="addFeature()" class="px-6 py-2 bg-brand-500 text-white rounded-lg">إنشاء</button>
+            `);
+        }
+
+        function addFeature() {
+            const name = document.getElementById('feat-name').value;
+            if(!name) return;
+            appData.customFeatures.push({
+                id: generateId(),
+                name,
+                fields: [
+                    {name: 'الاسم/العنوان', type: 'text'},
+                    {name: 'الحالة/النوع', type: 'select', options: ['عام', 'خاص', 'مكتمل', 'معلق']}
+                ],
+                records: []
+            });
+            saveData();
+            closeModal();
+            navigate('adminCustomFeatures');
+        }
+
+        function deleteFeature(id) {
+            appData.customFeatures = appData.customFeatures.filter(f => f.id !== id);
+            saveData();
+            navigate('adminCustomFeatures');
+        }
+
+        function addRecord(featId) {
+            const feat = appData.customFeatures.find(f => f.id === featId);
+            const record = {};
+            let hasData = false;
+            
+            feat.fields.forEach((field, idx) => {
+                const el = document.getElementById(`add-rec-${featId}-${idx}`);
+                if(el && el.value) {
+                    record[field.name] = el.value;
+                    hasData = true;
+                }
+            });
+
+            if(hasData) {
+                feat.records.push(record);
+                saveData();
+                showToast('تمت إضافة السجل');
+                navigate('adminCustomFeatures');
+            }
+        }
+
+        // Admin: Notes
+        function renderAdminNotes() {
+            let html = `
+                <div class="flex items-center justify-between mb-8">
+                    <div class="flex items-center gap-4">
+                        <button onclick="navigate('adminHome')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                        <h1 class="text-2xl font-bold text-gray-900">إدارة الملاحظات والـ Hooks</h1>
+                    </div>
+                    <button onclick="openAddNoteModal()" class="bg-brand-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-brand-600 shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> إضافة ملاحظة
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            `;
+            
+            appData.notes.forEach(note => {
+                html += `
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-bold text-lg text-gray-900">${note.title}</h3>
+                            <button onclick="deleteNote('${note.id}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                        <textarea id="edit-note-${note.id}" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-brand-500 outline-none bg-gray-50 mb-3" rows="4">${note.content}</textarea>
+                        <button onclick="updateNote('${note.id}')" class="bg-gray-200 text-gray-800 px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-300 transition-colors">حفظ التعديل</button>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            contentArea.innerHTML = html;
+        }
+
+        function openAddNoteModal() {
+            openModal('إضافة ملاحظة / نص جديد', `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">العنوان</label>
+                        <input type="text" id="note-title" class="w-full px-4 py-2 rounded-lg border border-gray-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">النص / المحتوى</label>
+                        <textarea id="note-content" class="w-full px-4 py-2 rounded-lg border border-gray-300 h-32"></textarea>
+                    </div>
+                </div>
+            `, `
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg">إلغاء</button>
+                <button onclick="addNote()" class="px-6 py-2 bg-brand-500 text-white rounded-lg">إضافة</button>
+            `);
+        }
+
+        function addNote() {
+            const title = document.getElementById('note-title').value;
+            const content = document.getElementById('note-content').value;
+            if(!title || !content) return;
+            appData.notes.push({ id: generateId(), title, content });
+            saveData();
+            closeModal();
+            navigate('adminNotes');
+        }
+
+        function updateNote(id) {
+            const note = appData.notes.find(n => n.id === id);
+            note.content = document.getElementById(`edit-note-${id}`).value;
+            saveData();
+            showToast('تم حفظ الملاحظة');
+        }
+        function deleteNote(id) {
+            appData.notes = appData.notes.filter(n => n.id !== id);
+            saveData();
+            navigate('adminNotes');
+        }
+
+        // Admin: Settings
+        function renderAdminSettings() {
+            let html = `
+                <div class="flex items-center gap-4 mb-8">
+                    <button onclick="navigate('adminHome')" class="text-gray-500 hover:text-brand-600 transition-colors"><i class="fa-solid fa-arrow-right text-xl"></i></button>
+                    <h1 class="text-2xl font-bold text-gray-900">إعدادات النظام</h1>
+                </div>
+                
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 max-w-2xl">
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">اسم الموقع / المنصة</label>
+                            <input type="text" id="set-sitename" value="${appData.settings.siteName}" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition-all">
+                        </div>
+                        
+                        <div class="border-t border-gray-100 pt-6">
+                            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><i class="fa-solid fa-robot text-brand-500"></i> إعدادات الذكاء الاصطناعي (Gemini API)</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">مفتاح الـ API (Gemini API Key)</label>
+                                    <input type="password" id="set-apikye" value="${appData.settings.geminiKey}" placeholder="AIzaSy..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition-all font-mono">
+                                    <p class="text-xs text-gray-500 mt-1">يُحفظ المفتاح محلياً في متصفحك فقط ولا يُرسل لأي سيرفر وسيط.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">نموذج الذكاء الاصطناعي (Model)</label>
+                                    <select id="set-model" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition-all bg-white">
+                                        <option value="gemini-3.5-flash" ${appData.settings.geminiModel === 'gemini-3.5-flash' ? 'selected' : ''}>gemini-3.5-flash (أسرع - موصى به)</option>
+                                        <option value="gemini-2.5-pro" ${appData.settings.geminiModel === 'gemini-2.5-pro' ? 'selected' : ''}>gemini-2.5-pro (أكثر دقة)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 flex justify-end">
+                            <button onclick="saveSettings()" class="bg-brand-500 text-white px-8 py-3 rounded-xl font-bold hover:bg-brand-600 transition-colors shadow-md shadow-brand-500/30 flex items-center gap-2">
+                                <i class="fa-regular fa-floppy-disk"></i> حفظ الإعدادات
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            contentArea.innerHTML = html;
+        }
+
+        function saveSettings() {
+            appData.settings.siteName = document.getElementById('set-sitename').value || 'المنصة';
+            appData.settings.geminiKey = document.getElementById('set-apikye').value;
+            appData.settings.geminiModel = document.getElementById('set-model').value;
+            saveData();
+            showToast('تم حفظ الإعدادات بنجاح');
+        }
+
+    </script>
+</body>
+</html>
